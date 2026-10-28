@@ -1,6 +1,7 @@
  <!DOCTYPE html>
 <!--
-FIREBASE SETUP REQUIRED BEFORE PUBLISHING:
+OUTBREAK FPS — CONFIGURED FIREBASE BUILD:
+The Firebase web configuration below is already filled in. Keep using the same Firebase project to preserve accounts and cloud profiles.
 1. Create a Firebase project at https://console.firebase.google.com/.
 2. Authentication -> Sign-in method -> enable Email/Password.
 3. Firestore Database -> create a database.
@@ -27,7 +28,7 @@ FIREBASE SETUP REQUIRED BEFORE PUBLISHING:
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>OUTBREAK FPS — Crimson Firebase Fix</title>
+<title>OUTBREAK FPS — Crimson Protocol Update</title>
 <style>
 :root {
   --gold:#ffd477;
@@ -288,7 +289,7 @@ button:active {transform:translateY(2px);box-shadow:0 2px 0 #a46b27}
   </div>
 </div>
 
-<!-- Firebase is used for real cross-device accounts. Configure the keys below before publishing. -->
+<!-- Firebase is used for cross-device accounts. Keep this project/config unchanged to preserve existing accounts. -->
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
@@ -345,6 +346,7 @@ let meleeCooldown=0,meleeSwing=0;
 let weapon=0,owned=new Set([0]),ammo=[],reserve=[],depth=[];
 let jumpVelocity=0,jumpHeight=0,viewZ=0,jumpRequested=false;
 let kills=0,botId=0;
+let crimsonProtocolSpawned=false;
 let slideTimer=0,slideCooldown=0,slideDX=0,slideDY=0;
 let sprintRemaining=7.5,sprintCooldown=0,sprinting=false;
 let hitMarkerTime=0,hitMarkerKill=false,tracers=[];
@@ -408,17 +410,17 @@ function makeBot(armed,minDistance=7){
   const p=position(minDistance),hp=armed?130:100;
   return{
     id:++botId,x:p.x,y:p.y,hp,maxHp:hp,alive:true,armed,
-    speed:armed?.60:.76,attack:.6+rand()*.8,hit:0,
+    speed:armed?.60:.76,attack:.6+rand()*.8,hit:0,walkPhase:rand()*Math.PI*2,crimson:false,
     strafeDir:rand()<.5?-1:1,strafeTimer:.6+rand()*1.4,
     wanderAngle:rand()*Math.PI*2,wanderTimer:rand()*2
   };
 }
-function aliveCount(armed){return bots.filter(b=>b.alive&&b.armed===armed).length}
+function aliveCount(armed){return bots.filter(b=>b.alive&&!b.crimson&&b.armed===armed).length}
 function maintainBotCounts(){
   bots=bots.filter(b=>b.alive&&b.hp>0);
   while(aliveCount(true)<SHOOTERS)bots.push(makeBot(true,7));  while(aliveCount(false)<MELEE)bots.push(makeBot(false,7));
   for(const type of [true,false]){
-    const group=bots.filter(b=>b.armed===type);
+    const group=bots.filter(b=>!b.crimson&&b.armed===type);
     while(group.length>(type?SHOOTERS:MELEE)){
       const extra=group.pop();extra.alive=false;
       bots=bots.filter(b=>b!==extra);
@@ -428,7 +430,7 @@ function maintainBotCounts(){
 
 
 // Firebase-backed account, profile and shop system.
-// SETUP: paste your Firebase web config into FIREBASE_CONFIG below.
+// Firebase web config for the existing outbreak-fps project. Do not change this when updating the game.
 const FIREBASE_CONFIG={
   apiKey:"AIzaSyBkfCzg85Akxs3U7wfi2JOCLPMAGpqlu28",
   authDomain:"outbreak-fps.firebaseapp.com",
@@ -828,36 +830,42 @@ function drawBot(b,p){
   const w=scale*.44,h=scale*.84;
   const ground=horizon()+scale*.44;
   const top=ground-h;
-  const skin=b.hit>0?'#f4f4e8':'#789b62';
+  const skin=b.hit>0?'#f4f4e8':(b.crimson?'#9b3447':'#789b62');
+  const gait=Math.sin(b.walkPhase||0), gaitOpp=Math.sin((b.walkPhase||0)+Math.PI);
   ctx.save();
   ctx.globalAlpha=Math.max(.46,1-p.d*.018);
+  if(b.crimson){ctx.shadowColor='#ff173e';ctx.shadowBlur=Math.max(8,w*.28);ctx.strokeStyle='#ff3656';ctx.lineWidth=Math.max(1,w*.025);ctx.beginPath();ctx.ellipse(p.x,ground-h*.48,w*.47,h*.52,0,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;}
+  // Subtle shoulder/body sway makes the gait feel weighted instead of sliding.
+  ctx.translate(gait*w*.018,Math.abs(gait)*h*.008);
 
   // Ground shadow.
   ctx.fillStyle='#0009';ctx.beginPath();
   ctx.ellipse(p.x,ground,w*.76,Math.max(2,w*.18),0,0,Math.PI*2);ctx.fill();
 
   // Uneven legs and worn boots.
-  ctx.fillStyle='#344039';
-  ctx.save();ctx.translate(-w*.015,0);ctx.rotate(-.035);
-  ctx.fillRect(p.x-w*.28,top+h*.65,w*.22,h*.31);ctx.restore();
-  ctx.save();ctx.translate(w*.025,0);ctx.rotate(.055);
-  ctx.fillRect(p.x+w*.06,top+h*.66,w*.22,h*.3);ctx.restore();
-  ctx.fillStyle='#171e1b';
-  ctx.fillRect(p.x-w*.34,top+h*.92,w*.31,h*.065);
-  ctx.fillRect(p.x+w*.035,top+h*.92,w*.31,h*.065);
+  ctx.fillStyle=b.crimson?'#351b25':'#344039';
+  // Rotate each leg around its hip; opposite phases create a clear alternating stride.
+  ctx.save();ctx.translate(p.x-w*.17,top+h*.66);ctx.rotate(gait*.34);
+  ctx.fillRect(-w*.11,0,w*.22,h*.30);ctx.restore();
+  ctx.save();ctx.translate(p.x+w*.17,top+h*.66);ctx.rotate(gaitOpp*.34);
+  ctx.fillRect(-w*.11,0,w*.22,h*.30);ctx.restore();
+  ctx.fillStyle=b.crimson?'#160c12':'#171e1b';
+  ctx.fillRect(p.x-w*.34+gait*w*.045,top+h*.92,w*.31,h*.065);
+  ctx.fillRect(p.x+w*.035+gaitOpp*w*.045,top+h*.92,w*.31,h*.065);
   ctx.fillStyle='#68725c';
   ctx.fillRect(p.x-w*.28,top+h*.69,w*.21,h*.06);
 
   // Torn sleeves and arms. Melee zombies reach forward; armed zombies brace a rifle.
-  ctx.strokeStyle='#42583b';ctx.lineWidth=Math.max(2,w*.14);ctx.lineCap='round';
+  ctx.strokeStyle=b.crimson?'#9d243c':'#42583b';ctx.lineWidth=Math.max(2,w*.14);ctx.lineCap='round';
   ctx.beginPath();
   if(b.armed){
     ctx.moveTo(p.x-w*.25,top+h*.36);ctx.lineTo(p.x-w*.04,top+h*.47);
     ctx.lineTo(p.x+w*.25,top+h*.43);
     ctx.moveTo(p.x+w*.25,top+h*.36);ctx.lineTo(p.x+w*.12,top+h*.48);
   }else{
-    ctx.moveTo(p.x-w*.24,top+h*.36);ctx.lineTo(p.x-w*.43,top+h*.47);ctx.lineTo(p.x-w*.53,top+h*.43);
-    ctx.moveTo(p.x+w*.23,top+h*.36);ctx.lineTo(p.x+w*.43,top+h*.43);ctx.lineTo(p.x+w*.52,top+h*.38);
+    // Long, uneven arm swings oppose the leg motion; the hands remain forward-reaching.
+    ctx.moveTo(p.x-w*.24,top+h*.36);ctx.lineTo(p.x-w*(.43+gait*.045),top+h*(.47+gait*.035));ctx.lineTo(p.x-w*(.53+gait*.055),top+h*.43);
+    ctx.moveTo(p.x+w*.23,top+h*.36);ctx.lineTo(p.x+w*(.43+gaitOpp*.045),top+h*(.43+gaitOpp*.035));ctx.lineTo(p.x+w*(.52+gaitOpp*.055),top+h*.38);
   }
   ctx.stroke();
   ctx.fillStyle=skin;
@@ -866,8 +874,8 @@ function drawBot(b,p){
 
   // Ragged torso with ripped edges and dark stains.
   const torso=ctx.createLinearGradient(p.x-w*.34,0,p.x+w*.34,0);
-  torso.addColorStop(0,'#28352b');torso.addColorStop(.28,b.armed?'#4a4e36':'#526b43');
-  torso.addColorStop(.62,b.armed?'#6a4639':'#71834c');torso.addColorStop(1,'#202a25');
+  torso.addColorStop(0,b.crimson?'#32131e':'#28352b');torso.addColorStop(.28,b.crimson?'#8e1f38':(b.armed?'#4a4e36':'#526b43'));
+  torso.addColorStop(.62,b.crimson?'#c02b4a':(b.armed?'#6a4639':'#71834c'));torso.addColorStop(1,b.crimson?'#3b101c':'#202a25');
   ctx.fillStyle=torso;
   ctx.beginPath();
   ctx.moveTo(p.x-w*.28,top+h*.3);ctx.lineTo(p.x-w*.36,top+h*.36);
@@ -890,9 +898,10 @@ function drawBot(b,p){
   // Sunken dark eye sockets and glowing sickly eyes.
   ctx.fillStyle='#263329';  ctx.beginPath();ctx.ellipse(p.x-w*.105,top+h*.205,w*.07,h*.045,0,0,Math.PI*2);ctx.fill();
   ctx.beginPath();ctx.ellipse(p.x+w*.105,top+h*.205,w*.07,h*.045,0,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#d6bd66';
+  ctx.fillStyle=b.crimson?'#ff193f':'#d6bd66';
+  if(b.crimson){ctx.shadowColor='#ff193f';ctx.shadowBlur=Math.max(5,w*.13)}
   ctx.fillRect(p.x-w*.13,top+h*.196,w*.05,h*.018);
-  ctx.fillRect(p.x+w*.08,top+h*.196,w*.05,h*.018);
+  ctx.fillRect(p.x+w*.08,top+h*.196,w*.05,h*.018);ctx.shadowBlur=0;
   ctx.fillStyle='#263026';
   ctx.beginPath();ctx.moveTo(p.x-w*.12,top+h*.27);ctx.lineTo(p.x+w*.12,top+h*.27);
   ctx.lineTo(p.x+w*.07,top+h*.3);ctx.lineTo(p.x-w*.07,top+h*.3);ctx.closePath();ctx.fill();
@@ -914,8 +923,9 @@ function drawBot(b,p){
   // Health bar.
   const bw=w*.92;
   ctx.fillStyle='#071016';ctx.fillRect(p.x-bw/2,top-9*screenScale,bw,5*screenScale);
-  ctx.fillStyle=b.hp/b.maxHp>.45?'#6bf28b':'#ff6c58';
+  ctx.fillStyle=b.crimson?'#ff244d':(b.hp/b.maxHp>.45?'#6bf28b':'#ff6c58');
   ctx.fillRect(p.x-bw/2,top-9*screenScale,bw*Math.max(0,b.hp/b.maxHp),5*screenScale);
+  if(b.crimson){ctx.fillStyle='#ff4867';ctx.font=`bold ${Math.max(9,11*screenScale)}px Arial`;ctx.textAlign='center';ctx.shadowColor='#ff173e';ctx.shadowBlur=8*screenScale;ctx.fillText('CRIMSON PROTOCOL',p.x,top-16*screenScale);ctx.shadowBlur=0;}
   ctx.restore();
 }
 
@@ -1256,10 +1266,27 @@ function dropBotLoot(bot){
   kills++;
   const type=rand()<.5?'med':'ammo';
   items.push({x:bot.x,y:bot.y,type,taken:false});
+  if(bot.crimson){
+    if(activeProfile){
+      activeProfile.crystals=cap(cap(activeProfile.crystals)+5);
+      saveActiveProfile();
+      say('CRIMSON PROTOCOL NEUTRALIZED · +5 RED CRYSTALS',2.2);
+    }else{
+      items.push({x:bot.x+.12,y:bot.y+.12,type:'shard',taken:false});
+      say('CRIMSON PROTOCOL NEUTRALIZED · LOG IN TO SAVE CRYSTALS',2.2);
+    }
+  }
   // Every tenth elimination also drops a red crystal shard.
   if(kills%10===0){
     items.push({x:bot.x+.12,y:bot.y+.12,type:'shard',taken:false});
     say('RED SHARD DROPPED · EVERY 10TH ELIMINATION',1.1);
+  }
+  // One rare, optional boss encounter per deployment. It is separate from the normal 10 bots.
+  if(!bot.crimson&&!crimsonProtocolSpawned&&kills>=3&&rand()<.10){
+    crimsonProtocolSpawned=true;
+    const elite=makeBot(false,9);elite.crimson=true;elite.hp=elite.maxHp=260;elite.speed=.88;elite.attack=.45;
+    bots.push(elite);
+    say('⚠ CRIMSON PROTOCOL DETECTED · ELITE HOSTILE INBOUND',2.6);
   }
 }
 
@@ -1703,6 +1730,7 @@ function tick(dt){
   maintainBotCounts();
   for(const b of bots){
     if(!b.alive)continue;
+    const animStartX=b.x,animStartY=b.y;
     b.hit=Math.max(0,b.hit-dt);
     b.strafeTimer-=dt;b.wanderTimer-=dt;
     if(b.strafeTimer<=0){b.strafeDir*=-1;b.strafeTimer=.7+rand()*1.5}
@@ -1741,6 +1769,8 @@ function tick(dt){
         }
       }
     }
+    const travelled=Math.hypot(b.x-animStartX,b.y-animStartY);
+    if(travelled>.0001){b.walkPhase=(b.walkPhase||0)+Math.min(1.5,travelled*11);b.walking=true;}else{b.walking=false;b.walkPhase=(b.walkPhase||0)+dt*.65;}
   }
 
   for(const item of items){
