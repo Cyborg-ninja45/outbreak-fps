@@ -21,6 +21,17 @@ The Firebase web configuration below is already filled in. Keep using the same F
    }
  }
 6. Add your GitHub Pages domain to Firebase Authentication -> Settings -> Authorized domains.
+7. For shared hourly shop controls, add the Firestore rules supplied in the assistant message.
+8. Add your GitHub Pages domain to Firebase Authentication -> Settings -> Authorized domains.
+9. Add this match block inside your existing Firestore `service cloud.firestore` rules, alongside the existing usernames and profiles matches, to allow a shared shop clock that only the mapped administrator account can edit:
+   match /shopConfig/{docId} {
+     allow read: if docId == 'global';
+     allow create, update: if docId == 'global' && request.auth != null
+       && exists(/databases/$(database)/documents/usernames/administrator)
+       && get(/databases/$(database)/documents/usernames/administrator).data.uid == request.auth.uid;
+     allow delete: if false;
+   }
+   Do not replace your existing rules with only this block.
 7. Keep the API key in the HTML as Firebase's web config is public. This is a casual game and the client-side shop is not designed to prevent cheating.
 -->
 
@@ -134,17 +145,18 @@ canvas {
 .slot .weaponLabel { font-weight:bold;letter-spacing:.2px }
 #help {padding:8px 10px;font-size:10px;color:#d2e0e7;letter-spacing:.25px}
 #overlay {
-  position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  position:fixed;inset:0;display:flex;align-items:flex-start;justify-content:center;
   z-index:10;padding:18px;overflow:auto;
   background:radial-gradient(ellipse at 50% 38%,#223d4bdc 0%,#08121bf2 62%,#03070bf7 100%);
 }
 #card {
-  width:min(670px,100%);padding:clamp(20px,4vw,34px);
+  width:min(760px,100%);max-height:calc(100vh - 28px);overflow:auto;margin:14px auto;scrollbar-color:#476574 #071019;padding:clamp(18px,3vw,30px);
   background:linear-gradient(145deg,#172934f5,#09131bf7);
   border:1px solid #8cb2c45c;border-radius:8px;
   box-shadow:0 20px 90px #000a;
   text-align:center;
 }
+.brandMark{font-size:clamp(12px,2vw,16px);letter-spacing:5px;font-weight:1000;color:#eaf8ff;margin-bottom:10px;text-shadow:0 0 16px #54c8ed66}.brandMark span{color:var(--gold)}
 .kicker {color:var(--cyan);font-size:11px;letter-spacing:5px;font-weight:bold}
 h1 {
   font-size:clamp(38px,8vw,68px);line-height:.98;margin:13px 0 10px;
@@ -210,13 +222,22 @@ button:active {transform:translateY(2px);box-shadow:0 2px 0 #a46b27}
 }
 
 #accountShop {margin-top:14px;text-align:left;border-top:1px solid #ffffff20;padding-top:13px}
+#accountShop .accountRow{margin:7px 0}
 #accountShop h2 {font-size:14px;letter-spacing:2px;color:var(--cyan);margin:7px 0}
 .accountRow {display:flex;gap:7px;flex-wrap:wrap;align-items:center}
-#profileName, #profilePassword {flex:1;min-width:145px;width:100%;background:#061019;color:white;border:1px solid #57717d;border-radius:4px;padding:11px;font-size:14px;display:block}
+#profileName, #profilePassword {flex:1;min-width:145px;width:100%;background:#02080d;color:#ffffff;border:2px solid #65d9ed;border-radius:5px;padding:13px;font-size:15px;display:block;box-shadow:inset 0 0 0 1px #ffffff12,0 0 12px #65d9ed18;outline:none}
+#profileName:focus,#profilePassword:focus{border-color:#ffd477;box-shadow:0 0 0 2px #ffd4772b}
+#profileName::placeholder,#profilePassword::placeholder{color:#b7cbd6;opacity:1}
 #profilePassword::placeholder, #profileName::placeholder {color:#aabcc7;opacity:1}
 #accountShop button {font-size:11px;letter-spacing:.5px;padding:10px 11px;margin:3px;box-shadow:0 2px 0 #a46b27}
 #profileStatus {font-size:12px;color:#e9d9a7;margin:7px 0}
 #shopItems {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+#shopClock{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 11px;margin:8px 0;background:#06141d;border:1px solid #65d9ed55;border-radius:4px;color:#cbeaf4;font-size:12px}
+#shopClock strong{font-variant-numeric:tabular-nums;color:#ffd477;font-size:16px}
+#adminShop{display:none;margin:10px 0;padding:11px;border:1px solid #ff526966;background:#220b12;border-radius:5px;text-align:left}
+#adminShop label{display:block;color:#ffd4db;font-size:11px;margin:4px 0}
+#adminShop input{background:#050a10;color:white;border:1px solid #b64a60;padding:8px;width:100%;border-radius:4px}
+#adminShop button{margin:5px 4px 0 0!important}
 .shopItem {background:#ffffff08;border:1px solid #ffffff20;border-radius:4px;padding:8px;font-size:11px;color:#dbe7ed;line-height:1.45}
 .shopItem strong {display:block;color:#ffd477;font-size:12px}
 .shopItem button {width:100%;margin:6px 0 0}
@@ -270,6 +291,7 @@ button:active {transform:translateY(2px);box-shadow:0 2px 0 #a46b27}
 
 <div id="overlay">
   <div id="card">
+    <div class="brandMark">CYBORG <span>NINJA</span> GAMES</div>
     <div class="kicker">SURVIVAL OPERATIONS // 01</div>
     <h1 id="title">OUTBREAK <span>FPS</span></h1>
     <p id="description">The area is overrun. Search for equipment, eliminate the bots, and stay alive.</p>
@@ -279,15 +301,17 @@ button:active {transform:translateY(2px);box-shadow:0 2px 0 #a46b27}
       <div class="accountRow"><input id="profilePassword" type="password" minlength="8" maxlength="128" autocomplete="current-password" placeholder="Password (8+ characters)" /></div>
       <div class="accountRow"><button id="profileButton" type="button">CREATE ACCOUNT</button><button id="loginButton" type="button">LOG IN</button></div>
       <div id="profileStatus">Online accounts require Firebase setup. Once configured, usernames, passwords, crystals and purchases sync across devices.</div>
-      <h2>RED CRYSTAL SHOP</h2>
+      <h2>HOURLY SUPPLY SHOP</h2>
+      <div id="shopClock"><span>RESTOCK IN <strong id="shopCountdown">--:--</strong></span><span id="shopRotationLabel">LIVE ROTATING STOCK</span></div>
       <div id="shopItems">
         <div class="shopItem"><strong>🩹 Field Medkit — 1 crystal</strong>Stack up to 50 extra medkits across deployments.<button type="button" data-buy="medkit">BUY</button></div>
         <div class="shopItem"><strong>🍪 Cookie Medkit — 2 crystals</strong>Stack up to 50 cookies; press C to heal 35 HP.<button type="button" data-buy="cookie">BUY</button></div>
         <div class="shopItem"><strong>📦 Ammo Crate — 1 crystal</strong>Stack up to 50 ammo crates for larger reserve ammunition.<button type="button" data-buy="ammo">BUY</button></div>
-        <div class="shopItem"><strong>🔴 Crimson Crosshair — 3 crystals</strong>Stack up to 50 crimson crosshair upgrades; the red style stays unlocked.<button type="button" data-buy="crosshair">BUY</button></div>
+        <div class="shopItem" id="crosshairStockItem"><strong id="crosshairStockTitle">🎯 Rotating Crosshair — 3 crystals</strong><span id="crosshairStockDescription">A limited crosshair design, available while in stock.</span><button type="button" id="buyStockCrosshair" data-buy="crosshair">BUY</button></div>
       </div>
       <div id="crosshairMenu"><label for="crosshairSelect">EQUIPPED CROSSHAIR</label><select id="crosshairSelect"><option value="default">Standard +</option></select></div>
-      <p class="small">Buying Crimson Crosshair unlocks four selectable styles: Crimson, Gun, Sword, and Shadow. Online account data syncs through Firebase. Never reuse a password from another account. This is a casual game; players may be able to modify their own local gameplay.</p>
+      <div id="adminShop"><strong>ADMINISTRATOR · HOURLY SHOP CONTROL</strong><label for="shopIntervalInput">Restock interval (minutes)</label><input id="shopIntervalInput" type="number" min="5" max="1440" value="60"><button type="button" id="saveShopInterval">SAVE HOURLY TIME</button><button type="button" id="adminRestock">RESTOCK NOW</button><button type="button" id="resetShopClock">START CLOCK NOW</button><p class="small">These controls update the shared shop when the Firestore rules below are installed.</p></div>
+      <p class="small">Each special crosshair must be purchased separately when it appears in the hourly stock. Purchased designs remain yours and sync through Firebase. Never reuse a password from another account. This is a casual game; players may be able to modify their own local gameplay.</p>
     </section>
 
     <div class="rulegrid">
@@ -367,7 +391,9 @@ let kills=0,botId=0;
 let crimsonProtocolSpawned=false;
 let totalBotSpawns=0,bossOfferPending=false,bossOfferResolved=false,bossActive=false,bossMissile=null,bossRipple=null;
 let bossAttackState='idle',bossAttackTimer=0,bossAttackName='',bossAttackCooldown=.9,bossWindup=0;
-const CROSSHAIRS={default:{label:'Standard +',html:'+'},crimson:{label:'Crimson Sigil',html:'✥'},gun:{label:'Gun Sight',html:'⌖'},sword:{label:'Sword',html:'⚔'},shadow:{label:'Shadow Rift',html:'╳░╳'}};
+const CROSSHAIRS={default:{label:'Standard +',html:'+'},crimson:{label:'Crimson Sigil',html:'✥',price:3},gun:{label:'Gun Sight',html:'⌖',price:4},sword:{label:'Sword',html:'⚔',price:5},shadow:{label:'Shadow Rift',html:'╳░╳',price:5}};
+const CROSSHAIR_STOCK_IDS=['crimson','gun','sword','shadow'];
+let shopConfig={startAt:0,intervalMinutes:60,restockSeed:0};let shopStockId='crimson',shopStockCycle=-1,shopConfigReady=false;let shopRefreshBusy=false;let shopCountdownTimer=null;
 let slideTimer=0,slideCooldown=0,slideDX=0,slideDY=0;
 let sprintRemaining=7.5,sprintCooldown=0,sprinting=false;
 let hitMarkerTime=0,hitMarkerKill=false,tracers=[];
@@ -467,7 +493,7 @@ let cloudReady=false, cloudAuth=null, cloudDB=null, activeProfile=null, accountB
 const MAX_STACK=50;
 function firebaseConfigured(){return FIREBASE_CONFIG.apiKey&&!FIREBASE_CONFIG.apiKey.startsWith('PASTE_')&&FIREBASE_CONFIG.projectId&&!FIREBASE_CONFIG.projectId.startsWith('PASTE_')&&FIREBASE_CONFIG.appId&&!FIREBASE_CONFIG.appId.startsWith('PASTE_')}
 function inventoryDefaults(){return {medkits:0,cookies:0,ammoPacks:0,crimsonCrosshair:0,crosshairStyles:['default'],selectedCrosshair:'default'}}
-function normalizeInventory(inv={}){const ownedCount=cap(typeof inv.crimsonCrosshair==='boolean'?(inv.crimsonCrosshair?1:0):inv.crimsonCrosshair);let styles=Array.isArray(inv.crosshairStyles)?inv.crosshairStyles.filter(v=>Object.prototype.hasOwnProperty.call(CROSSHAIRS,v)):['default'];if(ownedCount>0)styles=['default','crimson','gun','sword','shadow'];if(!styles.includes('default'))styles.unshift('default');const selected=styles.includes(inv.selectedCrosshair)?inv.selectedCrosshair:(ownedCount>0?'crimson':'default');return {medkits:cap(inv.medkits),cookies:cap(inv.cookies),ammoPacks:cap(inv.ammoPacks),crimsonCrosshair:ownedCount,crosshairStyles:styles,selectedCrosshair:selected}}
+function normalizeInventory(inv={}){const ownedCount=cap(typeof inv.crimsonCrosshair==='boolean'?(inv.crimsonCrosshair?1:0):inv.crimsonCrosshair);let styles=Array.isArray(inv.crosshairStyles)?inv.crosshairStyles.filter(v=>Object.prototype.hasOwnProperty.call(CROSSHAIRS,v)):['default'];if(!styles.includes('default'))styles.unshift('default');const selected=styles.includes(inv.selectedCrosshair)?inv.selectedCrosshair:'default';return {medkits:cap(inv.medkits),cookies:cap(inv.cookies),ammoPacks:cap(inv.ammoPacks),crimsonCrosshair:ownedCount,crosshairStyles:[...new Set(styles)],selectedCrosshair:selected}}
 function cap(n){return Math.max(0,Math.min(MAX_STACK,Math.floor(Number(n)||0)))}
 function profileInventory(){if(!activeProfile)return inventoryDefaults();activeProfile.inventory=normalizeInventory(activeProfile.inventory||{});return activeProfile.inventory}
 function usernameKey(name){return name.trim().toLowerCase()}
@@ -481,7 +507,8 @@ function updateAccountUI(){
  const inv=profileInventory(),unlocked=activeProfile?inv.crosshairStyles:['default'];
  const select=$('crosshairSelect');if(select){const wanted=inv.selectedCrosshair||'default';select.innerHTML=unlocked.map(id=>`<option value="${id}">${CROSSHAIRS[id].label}</option>`).join('');select.value=unlocked.includes(wanted)?wanted:'default';}
  applyCrosshair();
- document.querySelectorAll('[data-buy]').forEach(btn=>{btn.disabled=!activeProfile||accountBusy});
+ document.querySelectorAll('[data-buy]').forEach(btn=>{if(btn.dataset.buy!=='crosshair')btn.disabled=!activeProfile||accountBusy});
+ updateShopDisplay();
 }
 function applyCrosshair(){const el=$('crosshair');if(!el)return;const inv=profileInventory(),style=activeProfile?inv.selectedCrosshair||'default':'default',spec=CROSSHAIRS[style]||CROSSHAIRS.default;el.textContent=spec.html;el.style.color=style==='crimson'?'#ff294e':style==='gun'?'#d9e4e8':style==='sword'?'#e7f3ff':style==='shadow'?'#b3a2ff':'#f5fbff';el.style.fontSize=style==='shadow'?'23px':style==='sword'?'29px':'26px';el.style.fontWeight=style==='shadow'?'1000':'normal';el.style.textShadow=style==='shadow'?'0 0 4px #000,0 0 13px #8d53ff':'0 0 4px #000,0 0 8px #fff6';}
 $('crosshairSelect').addEventListener('change',async e=>{if(!activeProfile){setProfileStatus('Log in to equip purchased crosshairs.');return}const inv=profileInventory();if(!inv.crosshairStyles.includes(e.target.value))return;inv.selectedCrosshair=e.target.value;applyCrosshair();await saveActiveProfile();setProfileStatus('Crosshair equipped and saved to your account.');});
@@ -495,11 +522,13 @@ async function loadCloudProfile(user, username){
  const profile=snap.exists?snap.data():{username:username,crystals:0,wins:0,inventory:inventoryDefaults()};
  profile.username=profile.username||username;
  profile.crystals=cap(profile.crystals);profile.wins=Math.max(0,Math.floor(Number(profile.wins)||0));profile.inventory=normalizeInventory(profile.inventory||{});
+ // One-time migration: older versions unlocked every design after buying Crimson. Keep the standard sight and any already-owned Crimson design, but require separate purchases for the other designs.
+ if(profile.crosshairShopMigrationV1!==true){profile.inventory.crosshairStyles=profile.inventory.crimsonCrosshair>0?['default','crimson']:['default'];if(!profile.inventory.crosshairStyles.includes(profile.inventory.selectedCrosshair))profile.inventory.selectedCrosshair='default';profile.crosshairShopMigrationV1=true;}
  // One-time starter grant for the reserved username 'administrator'.
  // This is a game bonus, not secure proof of administrator privileges.
  let adminBonusGranted=false;
  if(key==='administrator' && profile.adminStarterGrantV1!==true){profile.crystals=50;profile.adminStarterGrantV1=true;adminBonusGranted=true;}
- activeProfile=profile;await profileRef.set(profile);updateAccountUI();setProfileStatus(adminBonusGranted?'Administrator starter bonus granted: 50 red crystals. Your account syncs across devices.':'Signed in successfully. Your account syncs across devices.');
+ activeProfile=profile;await profileRef.set(profile);updateAccountUI();loadShopConfig();setProfileStatus(adminBonusGranted?'Administrator starter bonus granted: 50 red crystals. Your account syncs across devices.':'Signed in successfully. Your account syncs across devices.');
 }
 async function createAccount(){
  if(accountBusy)return;if(!requireCloud())return;
@@ -517,7 +546,7 @@ async function createAccount(){
    const profile={username:raw,crystals:isAdministrator?50:0,wins:0,inventory:inventoryDefaults(),...(isAdministrator?{adminStarterGrantV1:true}:{})};
    await cloudDB.collection('profiles').doc(credential.user.uid).set(profile);activeProfile=profile;
    setProfileStatus(isAdministrator?'Administrator account created! 50 red crystals granted.':'Account created! Username is now reserved globally. Win a game to earn a full red crystal.');
-   updateAccountUI();$('profilePassword').value='';
+   updateAccountUI();loadShopConfig();$('profilePassword').value='';
  }catch(e){if(credential&&credential.user){try{await credential.user.delete()}catch(_){} }setProfileStatus(e.code==='auth/email-already-in-use'?'Account already exists. Use LOG IN.':(e.message||'Could not create account. Check Firebase setup and try again.'));}
  finally{accountBusy=false;updateAccountUI()}
 }
@@ -527,7 +556,7 @@ async function loginAccount(){
  if(!validUsername(raw)){setProfileStatus('Enter a valid username (2–20 letters, numbers, or underscores).');return}
  if(!password){setProfileStatus('Enter your password.');return}
  accountBusy=true;updateAccountUI();setProfileStatus('Signing in…');
- try{const cred=await cloudAuth.signInWithEmailAndPassword(usernameEmail(raw),password);await loadCloudProfile(cred.user,raw);$('profilePassword').value='';}
+ try{const cred=await cloudAuth.signInWithEmailAndPassword(usernameEmail(raw),password);await loadCloudProfile(cred.user,raw);loadShopConfig();$('profilePassword').value='';}
  catch(e){setProfileStatus(e.code==='auth/invalid-credential'||e.code==='auth/wrong-password'||e.code==='auth/user-not-found'?'Incorrect username or password.':(e.message||'Login failed. Check your connection and Firebase setup.'));}
  finally{accountBusy=false;updateAccountUI()}
 }
@@ -538,12 +567,22 @@ async function saveActiveProfile(){
 }
 async function buyShopItem(kind){
  if(!activeProfile){setProfileStatus('Create an account or log in before buying items.');return}
- const prices={medkit:1,cookie:2,ammo:1,crosshair:3},price=prices[kind],inv=profileInventory();
- const field={medkit:'medkits',cookie:'cookies',ammo:'ammoPacks',crosshair:'crimsonCrosshair'}[kind];if(!field)return;
+ const inv=profileInventory();
+ if(kind==='crosshair'){
+   const id=shopStockId,spec=CROSSHAIRS[id];
+   if(!spec){setProfileStatus('No crosshair is in stock right now.');return}
+   if(inv.crosshairStyles.includes(id)){setProfileStatus('You already own this crosshair.');return}
+   if(cap(activeProfile.crystals)<spec.price){setProfileStatus(`Not enough full red crystals. ${spec.price} required.`);return}
+   activeProfile.crystals=cap(activeProfile.crystals-spec.price);inv.crosshairStyles.push(id);inv.crimsonCrosshair=cap(inv.crimsonCrosshair+1);inv.selectedCrosshair=id;
+   await saveActiveProfile();setProfileStatus(`${spec.label} purchased and equipped! It is yours permanently.`);updateAccountUI();return;
+ }
+ const prices={medkit:1,cookie:2,ammo:1},price=prices[kind];
+ const field={medkit:'medkits',cookie:'cookies',ammo:'ammoPacks'}[kind];if(!field)return;
  if(inv[field]>=MAX_STACK){setProfileStatus('That upgrade is already at the maximum stack of 50.');return}
  if(cap(activeProfile.crystals)<price){setProfileStatus(`Not enough full red crystals. ${price} required.`);return}
- activeProfile.crystals=cap(activeProfile.crystals-price);inv[field]=cap(inv[field]+1);if(kind==='crosshair'){inv.crosshairStyles=['default','crimson','gun','sword','shadow'];if(!inv.selectedCrosshair||inv.selectedCrosshair==='default')inv.selectedCrosshair='crimson';}await saveActiveProfile();setProfileStatus(kind==='crosshair'?'Crimson Crosshair purchased! Crimson, Gun, Sword, and Shadow styles unlocked.':'Purchase saved to your online account. Upgrades stack up to 50.');updateAccountUI();
+ activeProfile.crystals=cap(activeProfile.crystals-price);inv[field]=cap(inv[field]+1);await saveActiveProfile();setProfileStatus('Purchase saved to your online account. Upgrades stack up to 50.');updateAccountUI();
 }
+
 let winAwarded=false;
 function awardWinCrystal(){if(winAwarded)return;winAwarded=true;if(activeProfile){activeProfile.crystals=cap(cap(activeProfile.crystals)+1);activeProfile.wins=(activeProfile.wins||0)+1;saveActiveProfile();say(activeProfile.crystals>=MAX_STACK?'VICTORY · CRYSTAL LIMIT 50 REACHED':'VICTORY · +1 FULL RED CRYSTAL',2);}else{say('VICTORY · LOG IN TO SAVE YOUR CRYSTAL',2)}}
 function useCookie(){
@@ -552,12 +591,53 @@ function useCookie(){
  if(activeProfile){activeProfile.inventory.cookies=cap((activeProfile.inventory.cookies||0)-1);saveActiveProfile()}
  say('🍪 COOKIE MEDKIT · +35 HEALTH',1);updateHUD();
 }
+const SHOP_CONFIG_REF='shopConfig/global';
+function isAdministrator(){return !!activeProfile&&usernameKey(activeProfile.username)==='administrator'}
+function deterministicShopChoice(cycle,seed){let n=(Math.imul((cycle+1)|0,1103515245)+Math.imul((seed+17)|0,12345))>>>0;n^=n<<13;n^=n>>>17;n^=n<<5;return CROSSHAIR_STOCK_IDS[(n>>>0)%CROSSHAIR_STOCK_IDS.length]}
+function activeShopCycle(now=Date.now()){const interval=Math.max(5,Math.min(1440,Number(shopConfig.intervalMinutes)||60))*60000;const start=Number(shopConfig.startAt)||now;return Math.max(0,Math.floor((now-start)/interval))}
+function updateShopDisplay(){
+ const interval=Math.max(5,Math.min(1440,Number(shopConfig.intervalMinutes)||60))*60000;
+ const now=Date.now();if(!shopConfig.startAt)shopConfig.startAt=now;
+ const elapsed=Math.max(0,now-Number(shopConfig.startAt));const cycle=Math.floor(elapsed/interval);const left=interval-(elapsed%interval);
+ if(cycle!==shopStockCycle){shopStockCycle=cycle;shopStockId=deterministicShopChoice(cycle,Number(shopConfig.restockSeed)||0)}
+ const mins=Math.floor(left/60000),secs=Math.floor((left%60000)/1000);const cd=$('shopCountdown');if(cd)cd.textContent=String(mins).padStart(2,'0')+':'+String(secs).padStart(2,'0');
+ const spec=CROSSHAIRS[shopStockId];const title=$('crosshairStockTitle'),desc=$('crosshairStockDescription'),btn=$('buyStockCrosshair');
+ if(title)title.textContent='🎯 '+spec.label+' — '+spec.price+' crystals';
+ if(desc)desc.textContent=activeProfile&&profileInventory().crosshairStyles.includes(shopStockId)?'OWNED · This design is permanently unlocked.':'Limited hourly stock. Buying it permanently unlocks this design.';
+ if(btn){btn.textContent=activeProfile&&profileInventory().crosshairStyles.includes(shopStockId)?'OWNED':'BUY';btn.disabled=!activeProfile||accountBusy||(activeProfile&&profileInventory().crosshairStyles.includes(shopStockId))}
+ const admin=$('adminShop');if(admin)admin.style.display=isAdministrator()?'block':'none';
+ const intervalInput=$('shopIntervalInput');if(intervalInput&&document.activeElement!==intervalInput)intervalInput.value=String(shopConfig.intervalMinutes||60);
+}
+async function loadShopConfig(){
+ if(!cloudReady||!cloudDB){updateShopDisplay();return}
+ try{const ref=cloudDB.collection('shopConfig').doc('global'),snap=await ref.get();
+   if(snap.exists){const d=snap.data()||{};shopConfig={startAt:Number(d.startAt)||Date.now(),intervalMinutes:Math.max(5,Math.min(1440,Number(d.intervalMinutes)||60)),restockSeed:Number(d.restockSeed)||0};shopConfigReady=true;}
+   else if(isAdministrator()){
+     shopConfig={startAt:Date.now(),intervalMinutes:60,restockSeed:0};await ref.set({...shopConfig,updatedAt:Date.now(),updatedBy:cloudAuth.currentUser.uid});shopConfigReady=true;
+   }else{shopConfig={startAt:Date.now(),intervalMinutes:60,restockSeed:0};}
+ }catch(err){console.warn('Shared hourly shop config could not load. Check Firestore rules.',err);shopConfig={startAt:shopConfig.startAt||Date.now(),intervalMinutes:shopConfig.intervalMinutes||60,restockSeed:shopConfig.restockSeed||0};}
+ updateShopDisplay();
+}
+async function saveShopConfig(patch={}){
+ if(!isAdministrator()){setProfileStatus('Administrator account required.');return}
+ shopConfig={...shopConfig,...patch};
+ if(cloudReady&&cloudDB&&cloudAuth?.currentUser){
+   try{await cloudDB.collection('shopConfig').doc('global').set({...shopConfig,updatedAt:Date.now(),updatedBy:cloudAuth.currentUser.uid});shopConfigReady=true;}
+   catch(err){setProfileStatus('Could not update shared shop. Update Firestore rules using the instructions supplied with this file.');console.error(err);return}
+ }else{setProfileStatus('Firebase must be connected to change the shared shop.');return}
+ shopStockCycle=-1;updateShopDisplay();setProfileStatus('Shared hourly shop updated for all players.');
+}
+$('saveShopInterval').addEventListener('click',()=>{const v=Math.max(5,Math.min(1440,Number($('shopIntervalInput').value)||60));saveShopConfig({intervalMinutes:v});});
+$('adminRestock').addEventListener('click',()=>saveShopConfig({restockSeed:(Number(shopConfig.restockSeed)||0)+1}));
+$('resetShopClock').addEventListener('click',()=>saveShopConfig({startAt:Date.now(),restockSeed:(Number(shopConfig.restockSeed)||0)+1}));
+if(!shopCountdownTimer)shopCountdownTimer=setInterval(updateShopDisplay,1000);
+
 $('profileButton').addEventListener('click',createAccount);
 $('loginButton').addEventListener('click',loginAccount);
 $('profileName').addEventListener('keydown',e=>{if(e.key==='Enter')loginAccount()});
 $('profilePassword').addEventListener('keydown',e=>{if(e.key==='Enter')loginAccount()});
 document.querySelectorAll('[data-buy]').forEach(button=>button.addEventListener('click',()=>buyShopItem(button.dataset.buy)));
-if(firebaseConfigured()&&window.firebase){try{firebase.initializeApp(FIREBASE_CONFIG);cloudAuth=firebase.auth();cloudDB=firebase.firestore();cloudReady=true;setProfileStatus('Firebase connected. Create an account or log in.');}catch(e){setProfileStatus('Firebase configuration error. Check FIREBASE_CONFIG in the HTML file.')}}else{setProfileStatus('SETUP REQUIRED: connect Firebase to enable globally unique usernames, password login and cross-device saves.')}
+if(firebaseConfigured()&&window.firebase){try{firebase.initializeApp(FIREBASE_CONFIG);cloudAuth=firebase.auth();cloudDB=firebase.firestore();cloudReady=true;setProfileStatus('Firebase connected. Create an account or log in.');loadShopConfig();}catch(e){setProfileStatus('Firebase configuration error. Check FIREBASE_CONFIG in the HTML file.')}}else{setProfileStatus('SETUP REQUIRED: connect Firebase to enable globally unique usernames, password login and cross-device saves.')}
 
 function init(){
   randSeed=(Date.now()>>>0)||1;
@@ -856,12 +936,14 @@ function drawArmorShape(type,x,y,size,color){
 }
 
 function drawBot(b,p){
-  const scale=Math.min(H*1.35,H/(p.d*1.55))*(b.boss?2.45:1);
+  const scale=Math.min(H*1.55,H/(p.d*1.35))*(b.boss?4.25:1);
   const w=scale*.44,h=scale*.84;
   const ground=horizon()+scale*.44;
   const top=ground-h;
   const skin=b.hit>0?'#f4f4e8':(b.crimson?'#9b3447':'#789b62');
   const gait=Math.sin(b.walkPhase||0), gaitOpp=Math.sin((b.walkPhase||0)+Math.PI);
+  const bossAttackPose=b.boss?(bossAttackState==='windup'?Math.max(0,1-bossAttackTimer/Math.max(.01,bossWindup)):bossAttackState==='punch'?1:bossAttackState==='ripple'?.65:bossAttackState==='missile'?.35:0):0;
+  const bossArmLift=b.boss?Math.sin((b.walkPhase||0)*.7)*.08:0;
   ctx.save();
   ctx.globalAlpha=Math.max(.46,1-p.d*.018);
   if(b.crimson||b.boss){ctx.shadowColor='#ff173e';ctx.shadowBlur=Math.max(8,w*.28);ctx.strokeStyle='#ff3656';ctx.lineWidth=Math.max(1,w*.025);ctx.beginPath();ctx.ellipse(p.x,ground-h*.48,w*.47,h*.52,0,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;}
@@ -885,27 +967,35 @@ function drawBot(b,p){
   ctx.fillStyle='#68725c';
   ctx.fillRect(p.x-w*.28,top+h*.69,w*.21,h*.06);
 
-  // Torn sleeves and arms. Melee zombies reach forward; armed zombies brace a rifle.
-  ctx.strokeStyle=b.crimson?'#9d243c':'#42583b';ctx.lineWidth=Math.max(2,w*.14);ctx.lineCap='round';
-  ctx.beginPath();
-  if(b.armed){
-    ctx.moveTo(p.x-w*.25,top+h*.36);ctx.lineTo(p.x-w*.04,top+h*.47);
-    ctx.lineTo(p.x+w*.25,top+h*.43);
-    ctx.moveTo(p.x+w*.25,top+h*.36);ctx.lineTo(p.x+w*.12,top+h*.48);
-  }else{
-    // Long, uneven arm swings oppose the leg motion; the hands remain forward-reaching.
-    ctx.moveTo(p.x-w*.24,top+h*.36);ctx.lineTo(p.x-w*(.43+gait*.045),top+h*(.47+gait*.035));ctx.lineTo(p.x-w*(.53+gait*.055),top+h*.43);
-    ctx.moveTo(p.x+w*.23,top+h*.36);ctx.lineTo(p.x+w*(.43+gaitOpp*.045),top+h*(.43+gaitOpp*.035));ctx.lineTo(p.x+w*(.52+gaitOpp*.055),top+h*.38);
-  }
-  ctx.stroke();
+  // Articulated arms: separate upper arms and forearms, with large boss-specific attack poses.
+  ctx.strokeStyle=b.crimson?'#9d243c':'#42583b';ctx.lineWidth=Math.max(2,w*(b.boss?.19:.14));ctx.lineCap='round';ctx.lineJoin='round';
+  const armReach=b.boss?.62:.43, armSwing=b.boss?gait*.10:gait*.045;
+  const leftShoulder={x:p.x-w*.27,y:top+h*.34},rightShoulder={x:p.x+w*.27,y:top+h*.34};
+  let leftElbow={x:p.x-w*(armReach+armSwing),y:top+h*(.48+gait*.025)},rightElbow={x:p.x+w*(armReach-armSwing),y:top+h*(.48+gaitOpp*.025)};
+  let leftHand={x:leftElbow.x-w*.16,y:leftElbow.y-h*.02},rightHand={x:rightElbow.x+w*.16,y:rightElbow.y-h*.02};
+  if(b.boss){
+    const pose=bossAttackPose;
+    if(bossAttackState==='windup'&&bossAttackName==='punch'){leftElbow.y-=h*.22*pose;leftHand.y-=h*.36*pose;leftHand.x+=w*.16*pose;rightElbow.y+=h*.08*pose;}
+    else if(bossAttackState==='punch'){leftElbow.x+=w*.38;leftHand.x+=w*.78;leftElbow.y+=h*.10;leftHand.y+=h*.12;rightElbow.x-=w*.18;rightHand.x-=w*.25;}
+    else if(bossAttackState==='windup'&&bossAttackName==='ripple'){leftElbow.y-=h*.24*pose;rightElbow.y-=h*.24*pose;leftHand.y-=h*.38*pose;rightHand.y-=h*.38*pose;}
+    else if(bossAttackState==='ripple'){leftElbow.y-=h*.17;rightElbow.y-=h*.17;leftHand.y-=h*.27;rightHand.y-=h*.27;}
+    else if(bossAttackState==='windup'&&bossAttackName==='missile'){rightElbow.x-=w*.2*pose;rightHand.x-=w*.38*pose;rightHand.y-=h*.14*pose;}
+    else if(bossAttackState==='missile'){rightElbow.x-=w*.22;rightHand.x-=w*.38;rightHand.y-=h*.10;}
+    else {leftElbow.y+=bossArmLift*h;rightElbow.y-=bossArmLift*h;leftHand.y+=bossArmLift*h*1.4;rightHand.y-=bossArmLift*h*1.4;}
+  }else if(!b.armed){leftElbow.x=p.x-w*(.43+gait*.045);leftElbow.y=top+h*(.47+gait*.035);leftHand.x=p.x-w*(.53+gait*.055);leftHand.y=top+h*.43;rightElbow.x=p.x+w*(.43+gaitOpp*.045);rightElbow.y=top+h*(.43+gaitOpp*.035);rightHand.x=p.x+w*(.52+gaitOpp*.055);rightHand.y=top+h*.38;}
+  ctx.beginPath();ctx.moveTo(leftShoulder.x,leftShoulder.y);ctx.lineTo(leftElbow.x,leftElbow.y);ctx.lineTo(leftHand.x,leftHand.y);ctx.moveTo(rightShoulder.x,rightShoulder.y);ctx.lineTo(rightElbow.x,rightElbow.y);ctx.lineTo(rightHand.x,rightHand.y);ctx.stroke();
+  // Shoulder mass, elbows and fists make the boss silhouette feel weighty.
+  ctx.fillStyle=b.boss?'#5e1022':(b.crimson?'#521525':'#42583b');
+  for(const pt of [leftShoulder,rightShoulder]){ctx.beginPath();ctx.ellipse(pt.x,pt.y,w*(b.boss?.22:.12),h*(b.boss?.095:.055),0,0,Math.PI*2);ctx.fill();}
   ctx.fillStyle=skin;
-  ctx.beginPath();ctx.arc(p.x-w*.53,top+h*.43,w*.075,0,Math.PI*2);ctx.fill();
-  ctx.beginPath();ctx.arc(p.x+w*.52,top+h*.38,w*.075,0,Math.PI*2);ctx.fill();
+  for(const pt of [leftElbow,rightElbow]){ctx.beginPath();ctx.arc(pt.x,pt.y,w*(b.boss?.115:.065),0,Math.PI*2);ctx.fill();}
+  ctx.fillStyle=b.boss?'#7d2030':skin;
+  for(const pt of [leftHand,rightHand]){ctx.beginPath();ctx.ellipse(pt.x,pt.y,w*(b.boss?.15:.075),h*(b.boss?.045:.035),0,0,Math.PI*2);ctx.fill();}
 
   // Ragged torso with ripped edges and dark stains.
   const torso=ctx.createLinearGradient(p.x-w*.34,0,p.x+w*.34,0);
-  torso.addColorStop(0,b.crimson?'#32131e':'#28352b');torso.addColorStop(.28,b.crimson?'#8e1f38':(b.armed?'#4a4e36':'#526b43'));
-  torso.addColorStop(.62,b.crimson?'#c02b4a':(b.armed?'#6a4639':'#71834c'));torso.addColorStop(1,b.crimson?'#3b101c':'#202a25');
+  torso.addColorStop(0,b.boss?'#21040b':(b.crimson?'#32131e':'#28352b'));torso.addColorStop(.28,b.boss?'#711329':(b.crimson?'#8e1f38':(b.armed?'#4a4e36':'#526b43')));
+  torso.addColorStop(.62,b.boss?'#ef244c':(b.crimson?'#c02b4a':(b.armed?'#6a4639':'#71834c')));torso.addColorStop(1,b.boss?'#350610':(b.crimson?'#3b101c':'#202a25'));
   ctx.fillStyle=torso;
   ctx.beginPath();
   ctx.moveTo(p.x-w*.28,top+h*.3);ctx.lineTo(p.x-w*.36,top+h*.36);
@@ -955,7 +1045,7 @@ function drawBot(b,p){
   ctx.fillStyle='#071016';ctx.fillRect(p.x-bw/2,top-9*screenScale,bw,5*screenScale);
   ctx.fillStyle=b.crimson?'#ff244d':(b.hp/b.maxHp>.45?'#6bf28b':'#ff6c58');
   ctx.fillRect(p.x-bw/2,top-9*screenScale,bw*Math.max(0,b.hp/b.maxHp),5*screenScale);
-  if(b.crimson){ctx.fillStyle='#ff4867';ctx.font=`bold ${Math.max(9,11*screenScale)}px Arial`;ctx.textAlign='center';ctx.shadowColor='#ff173e';ctx.shadowBlur=8*screenScale;ctx.fillText('CRIMSON PROTOCOL',p.x,top-16*screenScale);ctx.shadowBlur=0;}
+  if(b.boss){ctx.fillStyle='#ff4867';ctx.font=`900 ${Math.max(13,17*screenScale)}px Arial`;ctx.textAlign='center';ctx.shadowColor='#ff173e';ctx.shadowBlur=14*screenScale;ctx.fillText('CRIMSON PROTOCOL',p.x,top-20*screenScale);ctx.shadowBlur=0;}else if(b.crimson){ctx.fillStyle='#ff4867';ctx.font=`bold ${Math.max(9,11*screenScale)}px Arial`;ctx.textAlign='center';ctx.shadowColor='#ff173e';ctx.shadowBlur=8*screenScale;ctx.fillText('CRIMSON PROTOCOL',p.x,top-16*screenScale);ctx.shadowBlur=0;}
   ctx.restore();
 }
 
@@ -1303,10 +1393,10 @@ function beginBossEncounter(){
   $('bossOffer').style.display='none';
   // The existing hostiles vanish without kills, drops, or account rewards.
   bots=[];items=items.filter(it=>it.taken);bossMissile=null;bossRipple=null;
-  const boss=makeBot(false,9);boss.boss=true;boss.crimson=true;boss.armed=false;boss.hp=boss.maxHp=2400;boss.speed=.38;boss.attack=1;boss.walkPhase=0;boss.x=Math.max(2,Math.min(MW-3,player.x+Math.cos(yaw)*7));boss.y=Math.max(2,Math.min(MH-3,player.y+Math.sin(yaw)*7));
+  const boss=makeBot(false,9);boss.boss=true;boss.crimson=true;boss.armed=false;boss.hp=boss.maxHp=3200;boss.speed=.34;boss.attack=1;boss.walkPhase=0;boss.x=Math.max(2,Math.min(MW-3,player.x+Math.cos(yaw)*7));boss.y=Math.max(2,Math.min(MH-3,player.y+Math.sin(yaw)*7));
   if(!open(boss.x,boss.y)){const pos=position(6);boss.x=pos.x;boss.y=pos.y;}
   bots=[boss];bossAttackState='idle';bossAttackTimer=0;bossAttackCooldown=1.25;bossWindup=0;
-  $('bossBarWrap').style.display='block';$('bossHealthFill').style.width='100%';$('bossPhaseText').textContent='THREE ATTACK PATTERNS · STAY ALERT';
+  $('bossBarWrap').style.display='block';$('bossHealthFill').style.width='100%';$('bossPhaseText').textContent='THREE ATTACK PATTERNS · STAY ALERT';$('bossLabel').textContent='CRIMSON PROTOCOL · TITAN CLASS';
   last=performance.now();say('CRIMSON PROTOCOL BREAKOUT · BOSS ENGAGED',2.4);updateHUD();canvas.requestPointerLock?.();
 }
 function declineBossEncounter(){
@@ -1330,8 +1420,8 @@ function startBossAttack(){
 }
 function updateBoss(b,dt){
   const dx=player.x-b.x,dy=player.y-b.y,d=Math.hypot(dx,dy)||1,nx=dx/d,ny=dy/d;
-  if(d>3.3){botMove(b,nx*b.speed*dt,ny*b.speed*dt);b.walkPhase+=dt*2.2;}
-  else b.walkPhase+=dt*.7;
+  if(d>3.3){botMove(b,nx*b.speed*dt,ny*b.speed*dt);b.walkPhase+=dt*(bossAttackState==='idle'?2.7:1.4);}
+  else b.walkPhase+=dt*(bossAttackState==='idle'?.9:3.8);
   b.hit=Math.max(0,b.hit-dt);
   bossAttackCooldown-=dt;
   if(bossAttackState==='idle'&&bossAttackCooldown<=0)startBossAttack();
