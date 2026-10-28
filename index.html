@@ -87,6 +87,20 @@ canvas {
   font-size:26px;color:#f5fbff;font-weight:normal;
   text-shadow:0 0 4px #000,0 0 8px #fff6;
 }
+#bossBarWrap{position:fixed;z-index:5;top:14px;left:50%;transform:translateX(-50%);width:min(620px,68vw);display:none;text-align:center;pointer-events:none;text-shadow:0 2px 6px #000}
+#bossLabel{font-weight:1000;letter-spacing:4px;color:#ff4a5f;font-size:clamp(12px,2vw,20px);margin-bottom:5px}
+#bossBar{height:15px;background:#19080d;border:2px solid #ff5269;box-shadow:0 0 18px #ff173e88;overflow:hidden}
+#bossHealthFill{height:100%;width:100%;background:linear-gradient(90deg,#7c0018,#ff183f,#ff7b79);transition:width .12s}
+#bossPhaseText{font-size:10px;color:#ffe0e4;letter-spacing:2px;margin-top:4px}
+#bossOffer{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;padding:20px;background:#05070be8;backdrop-filter:blur(7px)}
+#bossOfferCard{width:min(520px,94vw);padding:28px;background:linear-gradient(145deg,#260711,#090d14 70%);border:2px solid #ff3154;box-shadow:0 0 45px #ff173e44;text-align:center;border-radius:8px}
+#bossOfferCard h2{font-size:clamp(24px,5vw,38px);color:#ff405d;letter-spacing:2px;margin:0 0 12px}
+#bossOfferCard p{color:#e4dce0;line-height:1.65}
+#bossOfferButtons{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:20px}
+#bossOfferButtons button{min-width:125px}
+#bossNo{background:linear-gradient(#e7eef1,#9caeb7);box-shadow:0 4px 0 #52616a}
+#crosshairMenu{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 4px;color:#dbe7ed;font-size:12px}
+#crosshairSelect{background:#061019;color:#fff;border:1px solid #57717d;border-radius:4px;padding:9px;min-width:180px}
 #hitmarker {
   position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
   color:white;font-size:28px;font-weight:bold;opacity:0;
@@ -182,6 +196,7 @@ button:active {transform:translateY(2px);box-shadow:0 2px 0 #a46b27}
 }
 @media(max-width:650px) {
   #stats {left:5px;top:5px;width:175px;padding:7px;font-size:10px}
+  #bossBarWrap{top:7px;width:55vw}#bossBar{height:10px}#bossLabel{letter-spacing:2px}
   #weaponInfo {right:5px;top:5px;min-width:118px;padding:7px}
   #weaponName {font-size:12px}
   #ammo {font-size:20px}
@@ -212,6 +227,8 @@ button:active {transform:translateY(2px);box-shadow:0 2px 0 #a46b27}
 <body>
 <canvas id="game"></canvas>
 <div id="scopeShade"></div><div id="atmosphereOverlay"></div>
+<div id="bossBarWrap"><div id="bossLabel">CRIMSON PROTOCOL</div><div id="bossBar"><div id="bossHealthFill"></div></div><div id="bossPhaseText">HOSTILE SIGNATURE DETECTED</div></div>
+<div id="bossOffer" role="dialog" aria-modal="true" aria-labelledby="bossOfferTitle"><div id="bossOfferCard"><div class="kicker">SPECIAL ENCOUNTER // BOT 35</div><h2 id="bossOfferTitle">CRIMSON PROTOCOL BREAKOUT</h2><p>A massive crimson hostile has been detected. Accept the boss encounter? All other zombies will be removed without kills, drops, or rewards. Survive its ripple, punch, and missile attacks to earn 5 red crystals.</p><div id="bossOfferButtons"><button id="bossYes" type="button">YES — FIGHT</button><button id="bossNo" type="button">NO — CONTINUE</button></div></div></div>
 
 <div id="hud">
   <div id="stats" class="panel">
@@ -269,14 +286,15 @@ button:active {transform:translateY(2px);box-shadow:0 2px 0 #a46b27}
         <div class="shopItem"><strong>📦 Ammo Crate — 1 crystal</strong>Stack up to 50 ammo crates for larger reserve ammunition.<button type="button" data-buy="ammo">BUY</button></div>
         <div class="shopItem"><strong>🔴 Crimson Crosshair — 3 crystals</strong>Stack up to 50 crimson crosshair upgrades; the red style stays unlocked.<button type="button" data-buy="crosshair">BUY</button></div>
       </div>
-      <p class="small">Online account data syncs through Firebase. Never reuse a password from another account. This is a casual game; players may be able to modify their own local gameplay.</p>
+      <div id="crosshairMenu"><label for="crosshairSelect">EQUIPPED CROSSHAIR</label><select id="crosshairSelect"><option value="default">Standard +</option></select></div>
+      <p class="small">Buying Crimson Crosshair unlocks four selectable styles: Crimson, Gun, Sword, and Shadow. Online account data syncs through Firebase. Never reuse a password from another account. This is a casual game; players may be able to modify their own local gameplay.</p>
     </section>
 
     <div class="rulegrid">
-      <div class="rule"><strong>10 ACTIVE ENEMIES</strong>5 armed shooters and 5 melee bots. Eliminated bots are replaced.</div>
+      <div class="rule"><strong>10 ACTIVE ENEMIES</strong>5 armed shooters and 5 melee bots. The 35th spawned bot triggers an optional boss offer.</div>
       <div class="rule"><strong>SCAVENGE</strong>Open chests for weapons, ammunition, medkits, and armor. Every bot drops supplies.</div>
       <div class="rule"><strong>ARMOR SET</strong>Collect a helmet, chestplate, leggings, and boots. Each adds 10 max health.</div>
-      <div class="rule"><strong>COMBAT</strong>Press V to swing your gun at nearby enemies. Every 10th bot drops a red shard. Collect 5 before you die to win.</div>
+      <div class="rule"><strong>COMBAT</strong>Press V to melee nearby enemies. Every 10th bot drops a red shard. The Crimson Protocol boss has three telegraphed attacks and rewards 5 crystals when defeated.</div>
       <div class="rule"><strong>MOBILITY</strong>Slide with Z, sprint with Shift, and jump with Space.</div>
       <div class="rule"><strong>SNIPER</strong>Hold right-click to scope. A scoped headshot instantly eliminates a melee bot.</div>
       <div class="rule"><strong>CONTROLS</strong>Click to capture the mouse. Press Esc to pause and release it.</div>
@@ -347,6 +365,9 @@ let weapon=0,owned=new Set([0]),ammo=[],reserve=[],depth=[];
 let jumpVelocity=0,jumpHeight=0,viewZ=0,jumpRequested=false;
 let kills=0,botId=0;
 let crimsonProtocolSpawned=false;
+let totalBotSpawns=0,bossOfferPending=false,bossOfferResolved=false,bossActive=false,bossMissile=null,bossRipple=null;
+let bossAttackState='idle',bossAttackTimer=0,bossAttackName='',bossAttackCooldown=.9,bossWindup=0;
+const CROSSHAIRS={default:{label:'Standard +',html:'+'},crimson:{label:'Crimson Sigil',html:'✥'},gun:{label:'Gun Sight',html:'⌖'},sword:{label:'Sword',html:'⚔'},shadow:{label:'Shadow Rift',html:'╳░╳'}};
 let slideTimer=0,slideCooldown=0,slideDX=0,slideDY=0;
 let sprintRemaining=7.5,sprintCooldown=0,sprinting=false;
 let hitMarkerTime=0,hitMarkerKill=false,tracers=[];
@@ -408,9 +429,11 @@ function position(minDistance=3){
 }
 function makeBot(armed,minDistance=7){
   const p=position(minDistance),hp=armed?130:100;
+  totalBotSpawns++;
+  if(totalBotSpawns===35&&!bossOfferResolved)bossOfferPending=true;
   return{
     id:++botId,x:p.x,y:p.y,hp,maxHp:hp,alive:true,armed,
-    speed:armed?.60:.76,attack:.6+rand()*.8,hit:0,walkPhase:rand()*Math.PI*2,crimson:false,
+    speed:armed?.60:.76,attack:.6+rand()*.8,hit:0,walkPhase:rand()*Math.PI*2,crimson:false,boss:false,
     strafeDir:rand()<.5?-1:1,strafeTimer:.6+rand()*1.4,
     wanderAngle:rand()*Math.PI*2,wanderTimer:rand()*2
   };
@@ -418,6 +441,7 @@ function makeBot(armed,minDistance=7){
 function aliveCount(armed){return bots.filter(b=>b.alive&&!b.crimson&&b.armed===armed).length}
 function maintainBotCounts(){
   bots=bots.filter(b=>b.alive&&b.hp>0);
+  if(bossActive)return;
   while(aliveCount(true)<SHOOTERS)bots.push(makeBot(true,7));  while(aliveCount(false)<MELEE)bots.push(makeBot(false,7));
   for(const type of [true,false]){
     const group=bots.filter(b=>!b.crimson&&b.armed===type);
@@ -442,8 +466,8 @@ const FIREBASE_CONFIG={
 let cloudReady=false, cloudAuth=null, cloudDB=null, activeProfile=null, accountBusy=false;
 const MAX_STACK=50;
 function firebaseConfigured(){return FIREBASE_CONFIG.apiKey&&!FIREBASE_CONFIG.apiKey.startsWith('PASTE_')&&FIREBASE_CONFIG.projectId&&!FIREBASE_CONFIG.projectId.startsWith('PASTE_')&&FIREBASE_CONFIG.appId&&!FIREBASE_CONFIG.appId.startsWith('PASTE_')}
-function inventoryDefaults(){return {medkits:0,cookies:0,ammoPacks:0,crimsonCrosshair:0}}
-function normalizeInventory(inv={}){return {medkits:cap(inv.medkits),cookies:cap(inv.cookies),ammoPacks:cap(inv.ammoPacks),crimsonCrosshair:cap(typeof inv.crimsonCrosshair==='boolean'?(inv.crimsonCrosshair?1:0):inv.crimsonCrosshair)}}
+function inventoryDefaults(){return {medkits:0,cookies:0,ammoPacks:0,crimsonCrosshair:0,crosshairStyles:['default'],selectedCrosshair:'default'}}
+function normalizeInventory(inv={}){const ownedCount=cap(typeof inv.crimsonCrosshair==='boolean'?(inv.crimsonCrosshair?1:0):inv.crimsonCrosshair);let styles=Array.isArray(inv.crosshairStyles)?inv.crosshairStyles.filter(v=>Object.prototype.hasOwnProperty.call(CROSSHAIRS,v)):['default'];if(ownedCount>0)styles=['default','crimson','gun','sword','shadow'];if(!styles.includes('default'))styles.unshift('default');const selected=styles.includes(inv.selectedCrosshair)?inv.selectedCrosshair:(ownedCount>0?'crimson':'default');return {medkits:cap(inv.medkits),cookies:cap(inv.cookies),ammoPacks:cap(inv.ammoPacks),crimsonCrosshair:ownedCount,crosshairStyles:styles,selectedCrosshair:selected}}
 function cap(n){return Math.max(0,Math.min(MAX_STACK,Math.floor(Number(n)||0)))}
 function profileInventory(){if(!activeProfile)return inventoryDefaults();activeProfile.inventory=normalizeInventory(activeProfile.inventory||{});return activeProfile.inventory}
 function usernameKey(name){return name.trim().toLowerCase()}
@@ -454,9 +478,13 @@ function updateAccountUI(){
  const status=$('profileStatus'),name=$('profileName');
  if(activeProfile){const inv=profileInventory();status.textContent=`SIGNED IN: ${activeProfile.username} · 🔴 CRYSTALS: ${cap(activeProfile.crystals)} / 50 · Medkits ${inv.medkits} · Cookies ${inv.cookies} · Ammo crates ${inv.ammoPacks} · Crosshair upgrades ${inv.crimsonCrosshair}`;if(name&&document.activeElement!==name)name.value=activeProfile.username;}
  const h=$('hudCrystals');if(h)h.textContent=activeProfile?cap(activeProfile.crystals):0;
- const cross=$('crosshair');if(cross)cross.style.color=activeProfile&&profileInventory().crimsonCrosshair>0?'#ff435a':'#f5fbff';
+ const inv=profileInventory(),unlocked=activeProfile?inv.crosshairStyles:['default'];
+ const select=$('crosshairSelect');if(select){const wanted=inv.selectedCrosshair||'default';select.innerHTML=unlocked.map(id=>`<option value="${id}">${CROSSHAIRS[id].label}</option>`).join('');select.value=unlocked.includes(wanted)?wanted:'default';}
+ applyCrosshair();
  document.querySelectorAll('[data-buy]').forEach(btn=>{btn.disabled=!activeProfile||accountBusy});
 }
+function applyCrosshair(){const el=$('crosshair');if(!el)return;const inv=profileInventory(),style=activeProfile?inv.selectedCrosshair||'default':'default',spec=CROSSHAIRS[style]||CROSSHAIRS.default;el.textContent=spec.html;el.style.color=style==='crimson'?'#ff294e':style==='gun'?'#d9e4e8':style==='sword'?'#e7f3ff':style==='shadow'?'#b3a2ff':'#f5fbff';el.style.fontSize=style==='shadow'?'23px':style==='sword'?'29px':'26px';el.style.fontWeight=style==='shadow'?'1000':'normal';el.style.textShadow=style==='shadow'?'0 0 4px #000,0 0 13px #8d53ff':'0 0 4px #000,0 0 8px #fff6';}
+$('crosshairSelect').addEventListener('change',async e=>{if(!activeProfile){setProfileStatus('Log in to equip purchased crosshairs.');return}const inv=profileInventory();if(!inv.crosshairStyles.includes(e.target.value))return;inv.selectedCrosshair=e.target.value;applyCrosshair();await saveActiveProfile();setProfileStatus('Crosshair equipped and saved to your account.');});
 function requireCloud(){if(!cloudReady){setProfileStatus('ONLINE ACCOUNTS NOT CONFIGURED. Follow the Firebase setup instructions provided with this file, then update FIREBASE_CONFIG.');return false}return true}
 async function loadCloudProfile(user, username){
  const key=usernameKey(username), usernameRef=cloudDB.collection('usernames').doc(key), profileRef=cloudDB.collection('profiles').doc(user.uid);
@@ -514,7 +542,7 @@ async function buyShopItem(kind){
  const field={medkit:'medkits',cookie:'cookies',ammo:'ammoPacks',crosshair:'crimsonCrosshair'}[kind];if(!field)return;
  if(inv[field]>=MAX_STACK){setProfileStatus('That upgrade is already at the maximum stack of 50.');return}
  if(cap(activeProfile.crystals)<price){setProfileStatus(`Not enough full red crystals. ${price} required.`);return}
- activeProfile.crystals=cap(activeProfile.crystals-price);inv[field]=cap(inv[field]+1);await saveActiveProfile();setProfileStatus('Purchase saved to your online account. Upgrades stack up to 50.');updateAccountUI();
+ activeProfile.crystals=cap(activeProfile.crystals-price);inv[field]=cap(inv[field]+1);if(kind==='crosshair'){inv.crosshairStyles=['default','crimson','gun','sword','shadow'];if(!inv.selectedCrosshair||inv.selectedCrosshair==='default')inv.selectedCrosshair='crimson';}await saveActiveProfile();setProfileStatus(kind==='crosshair'?'Crimson Crosshair purchased! Crimson, Gun, Sword, and Shadow styles unlocked.':'Purchase saved to your online account. Upgrades stack up to 50.');updateAccountUI();
 }
 let winAwarded=false;
 function awardWinCrystal(){if(winAwarded)return;winAwarded=true;if(activeProfile){activeProfile.crystals=cap(cap(activeProfile.crystals)+1);activeProfile.wins=(activeProfile.wins||0)+1;saveActiveProfile();say(activeProfile.crystals>=MAX_STACK?'VICTORY · CRYSTAL LIMIT 50 REACHED':'VICTORY · +1 FULL RED CRYSTAL',2);}else{say('VICTORY · LOG IN TO SAVE YOUR CRYSTAL',2)}}
@@ -567,6 +595,8 @@ function init(){
     if(crates>0){for(let i=0;i<reserve.length;i++)reserve[i]+=GUNS[i].mag*2*crates;inv.ammoPacks=0;saveActiveProfile();}
   }else{player.boughtMeds=0;player.cookies=0;}
   bots=[];items=[];chests=[];botId=0;kills=0;
+  totalBotSpawns=0;bossOfferPending=false;bossOfferResolved=false;bossActive=false;crimsonProtocolSpawned=false;bossMissile=null;bossRipple=null;bossAttackState='idle';bossAttackTimer=0;bossAttackName='';bossAttackCooldown=.9;bossWindup=0;
+  $('bossBarWrap').style.display='none';$('bossOffer').style.display='none';
   for(let i=0;i<SHOOTERS;i++)bots.push(makeBot(true,7));
   for(let i=0;i<MELEE;i++)bots.push(makeBot(false,7));
   maintainBotCounts();
@@ -826,7 +856,7 @@ function drawArmorShape(type,x,y,size,color){
 }
 
 function drawBot(b,p){
-  const scale=Math.min(H*1.35,H/(p.d*1.55));
+  const scale=Math.min(H*1.35,H/(p.d*1.55))*(b.boss?2.45:1);
   const w=scale*.44,h=scale*.84;
   const ground=horizon()+scale*.44;
   const top=ground-h;
@@ -834,7 +864,7 @@ function drawBot(b,p){
   const gait=Math.sin(b.walkPhase||0), gaitOpp=Math.sin((b.walkPhase||0)+Math.PI);
   ctx.save();
   ctx.globalAlpha=Math.max(.46,1-p.d*.018);
-  if(b.crimson){ctx.shadowColor='#ff173e';ctx.shadowBlur=Math.max(8,w*.28);ctx.strokeStyle='#ff3656';ctx.lineWidth=Math.max(1,w*.025);ctx.beginPath();ctx.ellipse(p.x,ground-h*.48,w*.47,h*.52,0,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;}
+  if(b.crimson||b.boss){ctx.shadowColor='#ff173e';ctx.shadowBlur=Math.max(8,w*.28);ctx.strokeStyle='#ff3656';ctx.lineWidth=Math.max(1,w*.025);ctx.beginPath();ctx.ellipse(p.x,ground-h*.48,w*.47,h*.52,0,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;}
   // Subtle shoulder/body sway makes the gait feel weighted instead of sliding.
   ctx.translate(gait*w*.018,Math.abs(gait)*h*.008);
 
@@ -1173,6 +1203,7 @@ function render(){
   scopeShade.style.display='none';
   drawWorld();
   drawWorldSprites();
+  drawBossEffects();
   drawAtmosphere();
   drawWeapon();
   drawShellCasings();
@@ -1226,7 +1257,8 @@ function render(){
   $('armor').textContent=`${player.armor} / 4`;
   $('armorFill').style.width=`${player.armor/4*100}%`;
   $('med').textContent=player.med;
-  $('bots').textContent='BOTS: '+(aliveCount(true)+aliveCount(false));
+  $('bots').textContent=bossActive?'BOSS FIGHT':('BOTS: '+(aliveCount(true)+aliveCount(false)));
+  if(bossActive){const b=bots.find(x=>x.boss&&x.alive);if(b){$('bossHealthFill').style.width=Math.max(0,b.hp/b.maxHp*100)+'%';$('bossBarWrap').style.display='block';}}
   $('botTypes').textContent=`Shooters: ${aliveCount(true)} · Melee: ${aliveCount(false)}`;
   $('kills').textContent='KILLS: '+kills;
   $('armorStatus').textContent=player.armorPieces.size+' / 4';
@@ -1261,32 +1293,87 @@ function damage(amount){
   }
 }
 
+function offerBossEncounter(){
+  if(bossOfferResolved||!running||dead)return;
+  paused=true;fireHeld=false;scopeHeld=false;keys={};document.exitPointerLock?.();
+  $('bossOffer').style.display='flex';$('bossBarWrap').style.display='none';
+}
+function beginBossEncounter(){
+  bossOfferResolved=true;crimsonProtocolSpawned=true;bossActive=true;paused=false;bossOfferPending=false;
+  $('bossOffer').style.display='none';
+  // The existing hostiles vanish without kills, drops, or account rewards.
+  bots=[];items=items.filter(it=>it.taken);bossMissile=null;bossRipple=null;
+  const boss=makeBot(false,9);boss.boss=true;boss.crimson=true;boss.armed=false;boss.hp=boss.maxHp=2400;boss.speed=.38;boss.attack=1;boss.walkPhase=0;boss.x=Math.max(2,Math.min(MW-3,player.x+Math.cos(yaw)*7));boss.y=Math.max(2,Math.min(MH-3,player.y+Math.sin(yaw)*7));
+  if(!open(boss.x,boss.y)){const pos=position(6);boss.x=pos.x;boss.y=pos.y;}
+  bots=[boss];bossAttackState='idle';bossAttackTimer=0;bossAttackCooldown=1.25;bossWindup=0;
+  $('bossBarWrap').style.display='block';$('bossHealthFill').style.width='100%';$('bossPhaseText').textContent='THREE ATTACK PATTERNS · STAY ALERT';
+  last=performance.now();say('CRIMSON PROTOCOL BREAKOUT · BOSS ENGAGED',2.4);updateHUD();canvas.requestPointerLock?.();
+}
+function declineBossEncounter(){
+  bossOfferResolved=true;paused=false;$('bossOffer').style.display='none';$('bossBarWrap').style.display='none';last=performance.now();say('ENCOUNTER DECLINED · RESUMING STANDARD OUTBREAK',1.7);canvas.requestPointerLock?.();
+}
+$('bossYes').addEventListener('click',beginBossEncounter);
+$('bossNo').addEventListener('click',declineBossEncounter);
+function defeatBoss(boss){
+  boss.alive=false;boss.hp=0;bossActive=false;bossMissile=null;bossRipple=null;bossAttackState='idle';
+  bots=[];items=items.filter(it=>it.taken);kills++;$('bossBarWrap').style.display='none';
+  if(activeProfile){activeProfile.crystals=cap(cap(activeProfile.crystals)+5);saveActiveProfile();say('CRIMSON PROTOCOL DESTROYED · +5 RED CRYSTALS',3);}
+  else say('BOSS DESTROYED · LOG IN TO SAVE THE 5-CRYSTAL REWARD',3);
+  maintainBotCounts();updateHUD();
+}
+function startBossAttack(){
+  const choices=['ripple','punch','missile'];bossAttackName=choices[Math.floor(rand()*choices.length)];
+  bossAttackState='windup';bossWindup=bossAttackName==='punch'?.72:.95;
+  bossAttackTimer=bossWindup;
+  $('bossPhaseText').textContent=bossAttackName==='ripple'?'WARNING: RIPPLE · JUMP TO EVADE':bossAttackName==='punch'?'WARNING: HEAVY PUNCH · SLIDE OR BACK AWAY':'WARNING: MISSILE LOCK · SHOOT THE PROJECTILE';
+  say(bossAttackName==='ripple'?'BOSS WINDUP · RIPPLE':bossAttackName==='punch'?'BOSS WINDUP · PUNCH':'BOSS WINDUP · MISSILE',.65);
+}
+function updateBoss(b,dt){
+  const dx=player.x-b.x,dy=player.y-b.y,d=Math.hypot(dx,dy)||1,nx=dx/d,ny=dy/d;
+  if(d>3.3){botMove(b,nx*b.speed*dt,ny*b.speed*dt);b.walkPhase+=dt*2.2;}
+  else b.walkPhase+=dt*.7;
+  b.hit=Math.max(0,b.hit-dt);
+  bossAttackCooldown-=dt;
+  if(bossAttackState==='idle'&&bossAttackCooldown<=0)startBossAttack();
+  if(bossAttackState==='windup'){
+    bossAttackTimer-=dt;
+    if(bossAttackTimer<=0){
+      if(bossAttackName==='ripple'){bossRipple={radius:.2,previous:.2,speed:12,life:4.2,hit:false};bossAttackState='ripple';$('bossPhaseText').textContent='RIPPLE ACTIVE · JUMP';}
+      else if(bossAttackName==='punch'){bossAttackState='punch';bossAttackTimer=.24;$('bossPhaseText').textContent='PUNCH IMPACT · SLIDE OR RANGE';}
+      else{bossMissile={x:b.x,y:b.y,life:7,speed:5.2,hit:false};bossAttackState='missile';$('bossPhaseText').textContent='MISSILE INBOUND · SHOOT IT';}
+    }
+  }else if(bossAttackState==='punch'){
+    bossAttackTimer-=dt;
+    if(bossAttackTimer<=0){if(d<3.1&&slideTimer<=0){damage(32);if(!dead)say('CRIMSON PUNCH · -32',.9)}else say('PUNCH EVADED',.65);bossAttackState='idle';bossAttackCooldown=1.1+rand()*.6;}
+  }
+  if(bossAttackState==='ripple'&&bossRipple){
+    const r=bossRipple; r.previous=r.radius;r.radius+=r.speed*dt;r.life-=dt;
+    const playerDistance=Math.hypot(player.x-b.x,player.y-b.y);
+    if(!r.hit&&r.previous<=playerDistance&&r.radius>=playerDistance){r.hit=true;if(jumpHeight<.55){const amount=27,absorbed=Math.min(player.armor*4,amount*.55);player.hp-=amount-absorbed;flash=.8;if(player.hp<=0){player.hp=0;dead=true;running=false;endScreen('ELIMINATED',`You eliminated ${kills} bots before being defeated.`);}else say('RIPPLE HIT · JUMP THE RED WAVE',.9)}else say('RIPPLE EVADED',.7);}
+    if(r.life<=0||r.radius>Math.hypot(MW,MH)){bossRipple=null;bossAttackState='idle';bossAttackCooldown=1.1+rand()*.7;}
+  }
+  if(bossMissile){
+    const m=bossMissile,mdx=player.x-m.x,mdy=player.y-m.y,md=Math.hypot(mdx,mdy)||1;
+    m.x+=mdx/md*m.speed*dt;m.y+=mdy/md*m.speed*dt;m.life-=dt;
+    if(md<.48&&!m.hit){m.hit=true;damage(24);if(!dead)say('MISSILE IMPACT · -24',.8);bossMissile=null;bossAttackState='idle';bossAttackCooldown=1.1+rand()*.6;}
+    else if(m.life<=0){bossMissile=null;bossAttackState='idle';bossAttackCooldown=1.1+rand()*.6;}
+  }
+  $('bossHealthFill').style.width=Math.max(0,b.hp/b.maxHp*100)+'%';
+}
+function drawBossEffects(){
+  if(bossRipple){const alpha=Math.max(0,1-bossRipple.radius/Math.hypot(MW,MH));ctx.save();ctx.globalAlpha=.45*alpha;ctx.strokeStyle='#ff214d';ctx.lineWidth=Math.max(3,screenScale*5);ctx.shadowColor='#ff173e';ctx.shadowBlur=18*screenScale;const rr=Math.min(W*.9,bossRipple.radius*W*.075);ctx.beginPath();ctx.ellipse(W/2,horizon()+Math.min(H*.36,bossRipple.radius*H*.045),rr,Math.max(4,rr*.18),0,0,Math.PI*2);ctx.stroke();ctx.restore();}
+  if(bossMissile){const p=project(bossMissile);if(p.d>.1&&Math.abs(p.a)<currentFov()*.8){const size=Math.max(5,Math.min(24,H/(p.d*9)));ctx.save();ctx.translate(p.x,horizon()+H*.22);ctx.rotate(p.a);ctx.shadowColor='#ff2a49';ctx.shadowBlur=15*screenScale;ctx.fillStyle='#ff3154';ctx.beginPath();ctx.moveTo(size*1.7,0);ctx.lineTo(-size,-size*.55);ctx.lineTo(-size*.65,0);ctx.lineTo(-size,size*.55);ctx.closePath();ctx.fill();ctx.fillStyle='#ffd9df';ctx.fillRect(-size*.5,-size*.18,size*.8,size*.36);ctx.restore();}}
+}
 function dropBotLoot(bot){
   // Every eliminated bot drops either a medkit or ammunition.
   kills++;
   const type=rand()<.5?'med':'ammo';
   items.push({x:bot.x,y:bot.y,type,taken:false});
-  if(bot.crimson){
-    if(activeProfile){
-      activeProfile.crystals=cap(cap(activeProfile.crystals)+5);
-      saveActiveProfile();
-      say('CRIMSON PROTOCOL NEUTRALIZED · +5 RED CRYSTALS',2.2);
-    }else{
-      items.push({x:bot.x+.12,y:bot.y+.12,type:'shard',taken:false});
-      say('CRIMSON PROTOCOL NEUTRALIZED · LOG IN TO SAVE CRYSTALS',2.2);
-    }
-  }
+  if(bot.crimson&&!bot.boss){if(activeProfile){activeProfile.crystals=cap(cap(activeProfile.crystals)+5);saveActiveProfile();say('CRIMSON PROTOCOL NEUTRALIZED · +5 RED CRYSTALS',2.2);}else{items.push({x:bot.x+.12,y:bot.y+.12,type:'shard',taken:false});say('CRIMSON PROTOCOL NEUTRALIZED · LOG IN TO SAVE CRYSTALS',2.2);}}
   // Every tenth elimination also drops a red crystal shard.
   if(kills%10===0){
     items.push({x:bot.x+.12,y:bot.y+.12,type:'shard',taken:false});
     say('RED SHARD DROPPED · EVERY 10TH ELIMINATION',1.1);
-  }
-  // One rare, optional boss encounter per deployment. It is separate from the normal 10 bots.
-  if(!bot.crimson&&!crimsonProtocolSpawned&&kills>=3&&rand()<.10){
-    crimsonProtocolSpawned=true;
-    const elite=makeBot(false,9);elite.crimson=true;elite.hp=elite.maxHp=260;elite.speed=.88;elite.attack=.45;
-    bots.push(elite);
-    say('⚠ CRIMSON PROTOCOL DETECTED · ELITE HOSTILE INBOUND',2.6);
   }
 }
 
@@ -1367,6 +1454,7 @@ function shoot(){
 
     const rayDX=Math.cos(angle);
     const rayDY=Math.sin(angle);
+    if(bossMissile){const mdx=bossMissile.x-player.x,mdy=bossMissile.y-player.y,forwardM=mdx*rayDX+mdy*rayDY,lateralM=Math.abs(mdx*rayDY-mdy*rayDX);if(forwardM>0&&forwardM<g.range&&lateralM<.42&&lineClear(bossMissile.x,bossMissile.y)){bossMissile=null;bossAttackState='idle';bossAttackCooldown=.8;hitAny=true;hitMarkerTime=.2;hitMarkerKill=false;say('MISSILE DESTROYED · NICE SHOT',1);continue;}}
 
     // The first wall determines the maximum bullet distance.
     const wall=cast(angle);
@@ -1390,7 +1478,7 @@ function shoot(){
       if(forward<=0)continue;
 
       const lateral=Math.abs(dx*rayDY-dy*rayDX);
-      const bodyRadius=.28;
+      const bodyRadius=b.boss? .78 : .28;
 
       if(lateral>=bodyRadius)continue;
 
@@ -1463,6 +1551,7 @@ function shoot(){
       target.alive=false;
       addEliminationBurst(target);
 
+      if(target.boss){defeatBoss(target);return;}
       dropBotLoot(target);
       killedTypes.push(target.armed);
     }
@@ -1529,7 +1618,9 @@ function meleeAttack(){
   hitMarkerKill=target.hp<=0;
   if(target.hp<=0&&target.alive){
     const wasArmed=target.armed;
-    target.hp=0;target.alive=false;dropBotLoot(target);
+    target.hp=0;target.alive=false;
+    if(target.boss){defeatBoss(target);return;}
+    dropBotLoot(target);
     bots=bots.filter(b=>b.alive&&b.hp>0);
     bots.push(makeBot(wasArmed,7));
     maintainBotCounts();
@@ -1728,9 +1819,11 @@ function tick(dt){
   viewZ=jumpHeight*H*.14;
 
   maintainBotCounts();
+  if(bossOfferPending){bossOfferPending=false;offerBossEncounter();return;}
   for(const b of bots){
     if(!b.alive)continue;
     const animStartX=b.x,animStartY=b.y;
+    if(b.boss){updateBoss(b,dt);continue;}
     b.hit=Math.max(0,b.hit-dt);
     b.strafeTimer-=dt;b.wanderTimer-=dt;
     if(b.strafeTimer<=0){b.strafeDir*=-1;b.strafeTimer=.7+rand()*1.5}
@@ -1827,6 +1920,7 @@ function endScreen(title, description) {
   if (startElement) startElement.textContent = 'PLAY AGAIN';
 
   if (overlay) overlay.classList.remove('hidden');
+  $('bossBarWrap').style.display='none';$('bossOffer').style.display='none';
 
   document.exitPointerLock?.();
 }
@@ -1848,6 +1942,7 @@ $('start').addEventListener('click',()=>{
 });
 
 document.addEventListener('keydown',e=>{
+  if($('bossOffer').style.display==='flex'){e.preventDefault();return;}
   const k=e.key.toLowerCase();
   const wasDown=!!keys[k];
   keys[k]=true;
